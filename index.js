@@ -7,7 +7,7 @@ const bodyParser = require("body-parser");
 const noticiaRoutes = require("./routes/noticiaRoutes");
 const allowedOrigins = [
   "http://localhost:5173", // para desarrollo local
-  "https://iam-animadores.vercel.app", // tu frontend en Vercel
+  "https://iam-animadores-client.vercel.app/", // tu frontend en Vercel
 ];
 
 const app = express();
