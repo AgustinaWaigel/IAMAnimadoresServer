@@ -19,7 +19,7 @@ app.use(
     origin: (origin, callback) => {
       const allowed = [
         "http://localhost:5173",
-        "https://iam-animadores-client.vercel.app/"
+        "https://iam-animadores-client.vercel.app" // 🔥 sin barra final
       ];
       if (!origin || allowed.includes(origin) || origin.endsWith(".vercel.app")) {
         callback(null, true);
