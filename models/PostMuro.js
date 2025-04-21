@@ -4,11 +4,11 @@ const postMuroSchema = new mongoose.Schema({
   contenido: { type: String, required: true },
   categoria: {
     type: String,
-    enum: ["oracion", "reflexion", "imagen", "archivo"],
-    default: "oracion",
+    enum: ["oracion", "reflexion", "otro"],
+    default: "otro",
   },
   archivoUrl: { type: String },
-  tipoArchivo: { type: String }, // image o raw
+  tipoArchivo: { type: String, enum: ["imagen", "pdf", "documento", "texto"], default: "texto" },
   autor: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   createdAt: { type: Date, default: Date.now },
 });
