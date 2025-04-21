@@ -5,7 +5,7 @@ const noticiaSchema = new mongoose.Schema({
   contenido: { type: String }, // ✅ debe ser opcional o enviado siempre
   tipo: { type: String, enum: ["noticia", "recurso"], required: true },
   archivoUrl: { type: String },
-  tipoArchivo: { type: String, enum: ["imagen", "pdf", "documento", "otro"], default: "otro" },
+  tipoArchivo: { type: String, enum: ["imagen", "pdf", "documento", "otro", "texto"], default: "otro" },
   autor: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   createdAt: { type: Date, default: Date.now },
 });
