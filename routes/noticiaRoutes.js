@@ -1,6 +1,5 @@
 const express = require("express");
 const router = express.Router();
-const Post = require("../models/Post");
 const multer = require("multer");
 const upload = multer({ dest: "uploads/" });
 const verifyToken = require("../middleware/auth");
@@ -8,53 +7,67 @@ const isAdmin = require("../middleware/isAdmin");
 const { cloudinary } = require("../utils/cloudinaryStorage");
 const fs = require("fs");
 const Noticia = require("../models/Noticias"); // 👈 esta línea importa el modelo
+const path = require("path");
+const { uploadFileToDrive } = require("../utils/googleDrive");
+
 
 // 📥 Crear comunicado (solo admin)
-router.post(
-  "/",
-  verifyToken,
-  isAdmin,
-  upload.single("archivo"),
-  async (req, res) => {
-    try {
-      const { titulo, contenido, tipo } = req.body;
-      if (!titulo || !tipo)
-        return res
-          .status(400)
-          .json({ success: false, message: "Faltan campos requeridos" });
+router.post("/", verifyToken, isAdmin, upload.single("archivo"), async (req, res) => {
+  try {
+    const { titulo, contenido, tipo } = req.body;
 
-      let archivoUrl = null;
-      let tipoArchivo = null;
+    if (!titulo || !tipo) {
+      return res.status(400).json({ success: false, message: "Faltan campos requeridos" });
+    }
 
-      if (req.file) {
-        const result = await cloudinary.uploader.upload(req.file.path, {
+    let archivoUrl = null;
+    let tipoArchivo = "texto"; // por defecto
+
+    if (req.file) {
+      const filePath = req.file.path;
+      const extension = path.extname(req.file.originalname).toLowerCase();
+      const mimeType = req.file.mimetype;
+
+      const isImage = [".jpg", ".jpeg", ".png", ".gif", ".webp"].includes(extension);
+      const isPdf = extension === ".pdf";
+      const isWord = [".doc", ".docx"].includes(extension);
+
+      if (isImage) {
+        const result = await cloudinary.uploader.upload(filePath, {
           folder: "noticias",
-          resource_type: "auto",
+          resource_type: "image",
+          use_filename: true,
+          unique_filename: false,
         });
         archivoUrl = result.secure_url;
-        tipoArchivo = result.resource_type === "image" ? "image" : "archivo";
+        tipoArchivo = "imagen";
+      } else {
+        const uploadedFile = await uploadFileToDrive(filePath, req.file.originalname, mimeType);
+        archivoUrl = uploadedFile.webViewLink; // link público
+        tipoArchivo = isPdf ? "pdf" : "documento";
       }
 
-      const noticia = new Noticia({
-        titulo: req.body.titulo,
-        contenido: req.body.contenido || "",
-        tipo: req.body.tipo,
-        archivoUrl,
-        tipoArchivo,
-        autor: req.user.id,
-      });
-
-      await noticia.save();
-
-      res.json({ success: true, noticia });
-    } catch (err) {
-      console.error("❌ Error al subir noticia:", err);
-      res
-        .status(500)
-        .json({ success: false, message: "Error al subir noticia" });
+      fs.unlinkSync(filePath); // 🔥 borrar temporal
     }
+
+    const noticia = new Noticia({
+      titulo,
+      contenido,
+      tipo,
+      archivoUrl,
+      tipoArchivo,
+      autor: req.user.id,
+    });
+
+    await noticia.save();
+
+    res.json({ success: true, noticia });
+
+  } catch (err) {
+    console.error("❌ Error al subir noticia:", err);
+    res.status(500).json({ success: false, message: err.message || "Error al subir noticia" });
   }
-);
+});
 
 // 📤 Obtener todos los comunicados
 router.get("/", async (req, res) => {

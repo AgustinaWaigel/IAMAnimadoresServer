@@ -4,25 +4,18 @@ const fs = require("fs");
 const path = require("path");
 const multer = require("multer");
 const upload = multer({ dest: "uploads/" });
-
+const isAdmin = require("../middleware/isAdmin");
 const PostMuro = require("../models/PostMuro");
 const verifyToken = require("../middleware/auth");
 const { cloudinary } = require("../utils/cloudinaryStorage");
 const { uploadFileToDrive } = require("../utils/googleDrive");
 
 // 📥 Crear mensaje en el muro
-router.post("/", verifyToken, upload.single("archivo"), async (req, res) => {
+router.post("/", verifyToken, isAdmin, upload.single("archivo"), async (req, res) => {
   try {
-    console.log("🔥 Nuevo POST /muro recibido");
-    console.log("➡️ req.body:", req.body);
-    console.log("➡️ req.file:", req.file);
-
-    const { contenido, categoria, tipoArchivo } = req.body;
-
-    if (!contenido) {
-      console.log("⚠️ Falta contenido");
-      return res.status(400).json({ success: false, message: "El contenido es obligatorio" });
-    }
+    const { titulo, contenido, tipo, tipoArchivo } = req.body;
+    if (!titulo || !tipo)
+      return res.status(400).json({ success: false, message: "Faltan campos requeridos" });
 
     let archivoUrl = null;
     let tipoArchivoFinal = tipoArchivo || "texto";
@@ -31,9 +24,7 @@ router.post("/", verifyToken, upload.single("archivo"), async (req, res) => {
       const filePath = req.file.path;
       const extension = path.extname(req.file.originalname).toLowerCase();
       const mimeType = req.file.mimetype;
-      const folderPath = `muro/${categoria || "general"}`;
-
-      console.log("🛠 Procesando archivo:", req.file.originalname);
+      const folderPath = `noticias/${tipo}`;
 
       const isImage = [".jpg", ".jpeg", ".png", ".gif", ".webp"].includes(extension);
       const isPdf = extension === ".pdf";
@@ -51,59 +42,41 @@ router.post("/", verifyToken, upload.single("archivo"), async (req, res) => {
       }
 
       if (isImage) {
-        // ✅ Subir imagen a Cloudinary
-        console.log("🛠 Subiendo imagen a Cloudinary:", filePath);
-        try {
-          const result = await cloudinary.uploader.upload(filePath, {
-            folder: folderPath,
-            resource_type: "image",
-            use_filename: true,
-            unique_filename: false,
-          });
-          console.log("✅ Resultado de Cloudinary:", result.secure_url);
-          archivoUrl = result.secure_url;
-          tipoArchivoFinal = "imagen";
-        } catch (error) {
-          console.error("❌ Error subiendo imagen a Cloudinary:", error);
-          throw new Error("No se pudo subir la imagen a Cloudinary");
-        }
+        const result = await cloudinary.uploader.upload(filePath, {
+          folder: folderPath,
+          resource_type: "image",
+          use_filename: true,
+          unique_filename: false,
+        });
+        archivoUrl = result.secure_url;
+        tipoArchivoFinal = "imagen";
       } else {
-        // ✅ Subir PDF o Word a Google Drive
-        console.log("🛠 Subiendo archivo a Google Drive:", filePath);
+        const { uploadFileToDrive } = require("../utils/googleDrive");
         const uploadedFile = await uploadFileToDrive(filePath, req.file.originalname, mimeType);
         archivoUrl = uploadedFile.webViewLink;
-        console.log("✅ Archivo subido a Google Drive:", archivoUrl);
-
-        // Mantenemos tipoArchivo como pdf o documento
+        // tipoArchivoFinal se mantiene como "pdf" o "documento"
       }
 
-      // 🧹 Borrar archivo temporal
-      fs.unlinkSync(filePath);
-      console.log("🧹 Archivo temporal borrado");
+      fs.unlinkSync(filePath); // Borramos el archivo temporal
     }
 
-    // Crear nuevo Post
-    const nuevo = new PostMuro({
-      contenido,
-      categoria,
+    const noticia = new Noticia({
+      titulo,
+      contenido: contenido || "",
+      tipo,
       archivoUrl,
       tipoArchivo: tipoArchivoFinal,
       autor: req.user.id,
     });
 
-    const guardado = await nuevo.save();
-    const completo = await guardado.populate("autor", "username foto");
-
-    res.status(201).json({ success: true, post: completo });
-
+    await noticia.save();
+    res.json({ success: true, noticia });
   } catch (err) {
-    console.error("❌ Error en subida de mensaje:", err);
-    res.status(500).json({
-      success: false,
-      message: err.message || "Error al crear mensaje",
-    });
+    console.error("❌ Error al subir noticia:", err);
+    res.status(500).json({ success: false, message: err.message || "Error interno" });
   }
 });
+
 
 
 // 📤 Obtener todos los mensajes del muro
