@@ -14,14 +14,14 @@ const { uploadFileToDrive } = require("../utils/googleDrive");
 // 📥 Crear comunicado (solo admin)
 router.post("/", verifyToken, isAdmin, upload.single("archivo"), async (req, res) => {
   try {
-    const { titulo, contenido, tipo } = req.body;
+    const { titulo, contenido, tipo, tipoArchivo: tipoArchivoManual } = req.body;
 
     if (!titulo || !tipo) {
       return res.status(400).json({ success: false, message: "Faltan campos requeridos" });
     }
 
     let archivoUrl = null;
-    let tipoArchivo = "texto"; // por defecto
+    let tipoArchivo = tipoArchivoManual || "texto";
 
     if (req.file) {
       const filePath = req.file.path;
@@ -44,7 +44,16 @@ router.post("/", verifyToken, isAdmin, upload.single("archivo"), async (req, res
       } else {
         const uploadedFile = await uploadFileToDrive(filePath, req.file.originalname, mimeType);
         archivoUrl = uploadedFile.webViewLink; // link público
-        tipoArchivo = isPdf ? "pdf" : "documento";
+        if (!tipoArchivoManual) {
+          tipoArchivo = isImage
+            ? "imagen"
+            : isPdf
+            ? "pdf"
+            : isWord
+            ? "documento"
+            : "otro";
+        }
+        
       }
 
       fs.unlinkSync(filePath); // 🔥 borrar temporal
