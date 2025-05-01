@@ -115,35 +115,63 @@ router.delete("/:id", verifyToken, isAdmin, async (req, res) => {
 });
 
 // ✅ Ruta para actualizar una noticia
-router.put("/:id", verifyToken, upload.single("archivo"), async (req, res) => {
+// ✅ Actualizar una noticia
+router.put("/:id", verifyToken, isAdmin, upload.single("archivo"), async (req, res) => {
   try {
     const noticia = await Noticia.findById(req.params.id);
-
     if (!noticia) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Noticia no encontrada" });
+      return res.status(404).json({ success: false, message: "Noticia no encontrada" });
     }
 
-    // Actualizar campos si se envían nuevos
-    noticia.titulo = req.body.titulo || noticia.titulo;
-    noticia.contenido = req.body.contenido || noticia.contenido;
-    noticia.tipo = req.body.tipo || noticia.tipo;
+    const { titulo, contenido, tipo } = req.body;
 
-    // Si suben un nuevo archivo, actualizamos el archivoUrl
+    if (titulo) noticia.titulo = titulo;
+    if (contenido) noticia.contenido = contenido;
+    if (tipo) noticia.tipo = tipo;
+
+    // Si viene nuevo archivo
     if (req.file) {
-      noticia.archivoUrl = `/uploads/${req.file.filename}`;
+      const filePath = req.file.path;
+      const extension = path.extname(req.file.originalname).toLowerCase();
+      const mimeType = req.file.mimetype;
+
+      const isImage = [".jpg", ".jpeg", ".png", ".gif", ".webp"].includes(extension);
+      const isPdf = extension === ".pdf";
+      const isWord = [".doc", ".docx"].includes(extension);
+
+      let nuevoArchivoUrl;
+
+      if (isImage) {
+        const result = await cloudinary.uploader.upload(filePath, {
+          folder: "noticias",
+          resource_type: "image",
+          use_filename: true,
+          unique_filename: false,
+        });
+        nuevoArchivoUrl = result.secure_url;
+        noticia.tipoArchivo = "imagen";
+      } else {
+        const uploaded = await uploadFileToDrive(filePath, req.file.originalname, mimeType);
+        nuevoArchivoUrl = uploaded.webViewLink;
+        noticia.tipoArchivo = isPdf
+          ? "pdf"
+          : isWord
+          ? "documento"
+          : "otro";
+      }
+
+      noticia.archivoUrl = nuevoArchivoUrl;
+      fs.unlinkSync(filePath); // 🧹 Limpiar archivo temporal
     }
 
     await noticia.save();
-
     res.json({ success: true, noticia });
+
   } catch (err) {
     console.error("❌ Error al actualizar noticia:", err);
-    res
-      .status(500)
-      .json({ success: false, message: "Error interno del servidor" });
+    res.status(500).json({ success: false, message: "Error interno del servidor" });
   }
 });
+
 
 module.exports = router;
