@@ -30,7 +30,7 @@ router.post("/register", async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-
+    console.log("JWT_SECRET en backend:", process.env.JWT_SECRET);
     const verificationToken = jwt.sign({ email }, process.env.JWT_SECRET, { expiresIn: "1d" });
 
     const newUser = new User({
@@ -44,12 +44,13 @@ router.post("/register", async (req, res) => {
       emailVerificationToken: verificationToken,
     });
 
+    console.log("Datos del usuario a guardar:", newUser);
     await newUser.save();
     await sendVerificationEmail(email, verificationToken);
 
     res.json({ success: true, message: "Usuario registrado. Verificá tu email para continuar." });
   } catch (err) {
-    console.error("❌ Error al registrar:", err);
+    console.error("❌ Error al registrar:", err.message, err.stack);
     res.status(500).json({ success: false, message: "Error interno del servidor" });
   }
 });
@@ -98,12 +99,9 @@ router.post("/login", async (req, res) => {
 router.get("/verify-email/:token", async (req, res) => {
   try {
     const token = req.params.token;
-    console.log("📨 Token recibido:", token);
-
     const user = await User.findOne({ emailVerificationToken: token });
 
     if (!user) {
-      console.log("❌ No se encontró usuario con ese token.");
       return res.status(400).send("Token inválido o expirado");
     }
 
@@ -111,14 +109,14 @@ router.get("/verify-email/:token", async (req, res) => {
     user.emailVerified = true;
     await user.save();
 
-    console.log("✅ Email verificado correctamente.");
-
-    res.redirect("https://iam-animadores.vercel.app/login?verificado=true");
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    res.redirect(`${frontendUrl}/login?verificado=true`);
   } catch (err) {
     console.error("❌ Error al verificar email:", err);
     res.status(500).send("Error interno al verificar el email");
   }
 });
+
 
 // OLVIDÉ MI CONTRASEÑA
 router.post("/forgot-password", async (req, res) => {

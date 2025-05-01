@@ -7,9 +7,10 @@ const postMuroSchema = new mongoose.Schema({
     enum: ["oracion", "reflexion", "otro"],
     default: "otro",
   },
-  archivoUrl: { type: String },
+  archivoUrl: [{ type: String }],
   tipoArchivo: { type: String, enum: ["imagen", "pdf", "documento", "texto"], default: "texto" },
   autor: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  likedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Usuario' }],
   createdAt: { type: Date, default: Date.now },
 });
 

@@ -6,68 +6,80 @@ const multer = require("multer");
 const upload = multer({ dest: "uploads/" });
 
 const PostMuro = require("../models/PostMuro");
-const verifyToken = require("../middleware/auth");
+const verificarToken = require("../middleware/auth");
 const { cloudinary } = require("../utils/cloudinaryStorage");
 const { uploadFileToDrive } = require("../utils/googleDrive");
 
 // 📥 Crear mensaje en el muro
-router.post("/", verifyToken, upload.single("archivo"), async (req, res) => {
+router.post("/", verificarToken, upload.array("archivo"), async (req, res) => {
   try {
     const { contenido, categoria, tipoArchivo } = req.body;
 
     if (!contenido) {
-      return res.status(400).json({ success: false, message: "El contenido es obligatorio" });
+      return res
+        .status(400)
+        .json({ success: false, message: "El contenido es obligatorio" });
     }
 
-    let archivoUrl = null;
+    let archivoUrl = [];
     let tipoArchivoFinal = tipoArchivo || "texto";
 
-    if (req.file && tipoArchivo !== "texto") {
-      const filePath = req.file.path;
-      const extension = path.extname(req.file.originalname).toLowerCase();
-      const mimeType = req.file.mimetype;
+    if (req.files && req.files.length > 0 && tipoArchivo !== "texto") {
       const folderPath = `muro/${categoria || "general"}`;
 
-      console.log("🛠 Procesando archivo:", req.file.originalname);
+      for (const file of req.files) {
+        const filePath = file.path;
+        const extension = path.extname(file.originalname).toLowerCase();
+        const mimeType = file.mimetype;
 
-      const isImage = [".jpg", ".jpeg", ".png", ".gif", ".webp"].includes(extension);
-      const isPdf = extension === ".pdf";
-      const isWord = [".doc", ".docx"].includes(extension);
+        const isImage = [".jpg", ".jpeg", ".png", ".gif", ".webp"].includes(
+          extension
+        );
+        const isPdf = extension === ".pdf";
+        const isWord = [".doc", ".docx"].includes(extension);
 
-      // Validaciones:
-      if (tipoArchivo === "imagen" && !isImage) {
-        throw new Error("Seleccionaste imagen pero subiste otro tipo de archivo");
+        if (tipoArchivo === "imagen" && !isImage) {
+          throw new Error(
+            "Seleccionaste imagen pero subiste otro tipo de archivo"
+          );
+        }
+        if (tipoArchivo === "pdf" && !isPdf) {
+          throw new Error("Seleccionaste PDF pero el archivo no es un PDF");
+        }
+        if (tipoArchivo === "documento" && !isWord) {
+          throw new Error(
+            "Seleccionaste Word pero el archivo no es .doc o .docx"
+          );
+        }
+
+        if (isImage) {
+          // Subir imagen a Cloudinary
+          const result = await cloudinary.uploader.upload(filePath, {
+            folder: folderPath,
+            resource_type: "image",
+            use_filename: true,
+            unique_filename: false,
+          });
+          archivoUrl.push(result.secure_url);
+          tipoArchivoFinal = "imagen";
+          console.log("✅ Imagen subida a Cloudinary:", result.secure_url);
+        } else {
+          // Subir archivo a Google Drive
+          const uploadedFile = await uploadFileToDrive(
+            filePath,
+            file.originalname,
+            mimeType
+          );
+          archivoUrl.push(uploadedFile.webViewLink);
+          console.log(
+            "✅ Archivo subido a Google Drive:",
+            uploadedFile.webViewLink
+          );
+        }
+
+        // Borrar archivo temporal
+        fs.unlinkSync(filePath);
       }
-      if (tipoArchivo === "pdf" && !isPdf) {
-        throw new Error("Seleccionaste PDF pero el archivo no es un PDF");
-      }
-      if (tipoArchivo === "documento" && !isWord) {
-        throw new Error("Seleccionaste Word pero el archivo no es .doc o .docx");
-      }
-
-      if (isImage) {
-        // 📷 Subir imagen a Cloudinary
-        const result = await cloudinary.uploader.upload(filePath, {
-          folder: folderPath,
-          resource_type: "image",
-          use_filename: true,
-          unique_filename: false,
-        });
-        archivoUrl = result.secure_url;
-        tipoArchivoFinal = "imagen";
-        console.log("✅ Imagen subida a Cloudinary:", archivoUrl);
-      } else {
-        // 📄 Subir documento a Google Drive
-        const uploadedFile = await uploadFileToDrive(filePath, req.file.originalname, mimeType);
-        archivoUrl = uploadedFile.webViewLink; // Usamos el link público
-        console.log("✅ Archivo subido a Google Drive:", archivoUrl);
-
-        // Tipo de archivo lo mantenemos como pdf, documento u otro
-      }
-
-      // 🧹 Borrar archivo temporal
-      fs.unlinkSync(filePath);
-      console.log("🧹 Archivo temporal borrado");
     }
 
     const nuevo = new PostMuro({
@@ -82,14 +94,14 @@ router.post("/", verifyToken, upload.single("archivo"), async (req, res) => {
     const completo = await guardado.populate("autor", "username foto");
 
     res.status(201).json({ success: true, post: completo });
-
   } catch (err) {
     console.error("❌ Error en subida de mensaje:", err);
-    res.status(500).json({ success: false, message: err.message || "Error al crear mensaje" });
+    res.status(500).json({
+      success: false,
+      message: err.message || "Error al crear mensaje",
+    });
   }
 });
-
-
 
 // 📤 Obtener todos los mensajes del muro
 // Backend: routes/muroRoutes.js
@@ -101,54 +113,65 @@ router.get("/", async (req, res) => {
 
     res.json({
       success: true,
-      posts: mensajes,  // 👈 MUY IMPORTANTE devolver así
+      posts: mensajes, // 👈 MUY IMPORTANTE devolver así
     });
-
   } catch (err) {
     console.error("❌ Error al obtener mensajes:", err);
-    res.status(500).json({ success: false, message: "Error al obtener mensajes" });
+    res
+      .status(500)
+      .json({ success: false, message: "Error al obtener mensajes" });
   }
 });
 
-
 // ❌ Borrar mensaje (solo el autor o admin)
-router.delete("/:id", verifyToken, async (req, res) => {
+router.delete("/:id", verificarToken, async (req, res) => {
   try {
     const post = await PostMuro.findById(req.params.id);
     if (!post) {
-      return res.status(404).json({ success: false, message: "Mensaje no encontrado" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Mensaje no encontrado" });
     }
 
     if (post.autor.toString() !== req.user.id && req.user.rol !== "admin") {
-      return res.status(403).json({ success: false, message: "No autorizado para eliminar" });
+      return res
+        .status(403)
+        .json({ success: false, message: "No autorizado para eliminar" });
     }
 
     await post.deleteOne();
     console.log("✅ Mensaje eliminado:", post._id);
     res.json({ success: true });
-
   } catch (err) {
     console.error("❌ Error al eliminar mensaje:", err);
-    res.status(500).json({ success: false, message: "Error al eliminar mensaje" });
+    res
+      .status(500)
+      .json({ success: false, message: "Error al eliminar mensaje" });
   }
 });
 
 // ✏️ Editar publicación del muro (solo autor o admin)
-router.put("/:id", verifyToken, async (req, res) => {
+router.put("/:id", verificarToken, async (req, res) => {
   try {
     const { contenido } = req.body;
 
     if (!contenido) {
-      return res.status(400).json({ success: false, message: "El contenido es obligatorio" });
+      return res
+        .status(400)
+        .json({ success: false, message: "El contenido es obligatorio" });
     }
 
     const post = await PostMuro.findById(req.params.id);
     if (!post) {
-      return res.status(404).json({ success: false, message: "Publicación no encontrada" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Publicación no encontrada" });
     }
 
     if (post.autor.toString() !== req.user.id && req.user.rol !== "admin") {
-      return res.status(403).json({ success: false, message: "No autorizado para editar" });
+      return res
+        .status(403)
+        .json({ success: false, message: "No autorizado para editar" });
     }
 
     post.contenido = contenido;
@@ -158,10 +181,40 @@ router.put("/:id", verifyToken, async (req, res) => {
 
     console.log("✅ Mensaje actualizado:", actualizado._id);
     res.json({ success: true, post: actualizado });
-
   } catch (err) {
     console.error("❌ Error al actualizar mensaje:", err);
-    res.status(500).json({ success: false, message: "Error al actualizar mensaje" });
+    res
+      .status(500)
+      .json({ success: false, message: "Error al actualizar mensaje" });
+  }
+});
+
+// PATCH /api/muro/:id/like
+router.patch("/:id/like", verificarToken, async (req, res) => {
+  try {
+    const post = await PostMuro.findById(req.params.id);
+    if (!post)
+      return res
+        .status(404)
+        .json({ success: false, message: "Publicación no encontrada" });
+
+    const userId = req.user.id; // o req.user._id según tu token
+
+    if (post.likedBy.includes(userId)) {
+      // Si ya dio like, lo saco
+      post.likedBy = post.likedBy.filter(
+        (id) => id.toString() !== userId.toString()
+      );
+    } else {
+      // Si no dio like, lo agrego
+      post.likedBy.push(userId);
+    }
+
+    await post.save();
+    res.json({ success: true, post });
+  } catch (error) {
+    console.error("Error en el like:", error);
+    res.status(500).json({ success: false, message: "Error en el servidor" });
   }
 });
 
