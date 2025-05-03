@@ -31,7 +31,7 @@ router.post("/register", async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     console.log("JWT_SECRET en backend:", process.env.JWT_SECRET);
-    const verificationToken = jwt.sign({ email }, process.env.JWT_SECRET, { expiresIn: "1d" });
+    const verificationToken = jwt.sign({ email }, process.env.JWT_SECRET, { expiresIn: "365d" });
 
     const newUser = new User({
       username,
@@ -73,7 +73,7 @@ router.post("/login", async (req, res) => {
     if (!validPassword) return res.status(401).json({ success: false, message: "Contraseña incorrecta" });
 
     const token = jwt.sign({ id: user._id, username: user.username, rol: user.rol }, process.env.JWT_SECRET, {
-      expiresIn: "30d",
+      expiresIn: "365d",
     });
 
     res.json({
@@ -128,7 +128,7 @@ router.post("/forgot-password", async (req, res) => {
     }
 
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "30d",
+      expiresIn: "365d",
     });
     
     // 🔐 Guardar token en el usuario
