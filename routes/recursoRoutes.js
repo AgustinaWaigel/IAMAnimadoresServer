@@ -5,7 +5,7 @@ const path = require("path");
 
 const Recurso = require("../models/Recurso");
 const verifyToken = require("../middleware/auth");
-const upload = require("../middleare/multer"); // ← tu multer configurado
+const upload = require("../middleware/multer"); // ← tu multer configurado
 const { cloudinary } = require("../utils/cloudinaryStorage");
 const { uploadFileToDrive } = require("../utils/googleDrive");
 
