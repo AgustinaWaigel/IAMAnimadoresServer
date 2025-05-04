@@ -2,11 +2,10 @@ const express = require("express");
 const router = express.Router();
 const fs = require("fs");
 const path = require("path");
-const multer = require("multer");
-const upload = multer({ dest: "uploads/" });
 
 const Recurso = require("../models/Recurso");
 const verifyToken = require("../middleware/auth");
+const upload = require("../utils/multerConfig"); // ← tu multer configurado
 const { cloudinary } = require("../utils/cloudinaryStorage");
 const { uploadFileToDrive } = require("../utils/googleDrive");
 
@@ -22,14 +21,14 @@ router.get("/", async (req, res) => {
   }
 });
 
-// 📥 Subir recurso
+// 📥 Subir recursos (varios)
 router.post("/upload", verifyToken, upload.array("archivo"), async (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ success: false, message: "No se recibieron archivos" });
     }
 
-    const urls = [];
+    const recursosGuardados = [];
 
     for (const file of req.files) {
       const extension = path.extname(file.originalname).toLowerCase();
@@ -50,20 +49,16 @@ router.post("/upload", verifyToken, upload.array("archivo"), async (req, res) =>
 
       let archivoUrl;
       if (tipoArchivo === "imagen") {
-        // ✅ Subida a Cloudinary con auto-detección
         const result = await cloudinary.uploader.upload(filePath, {
           folder: folderPath,
-          resource_type: "auto", // <- lo importante
+          resource_type: "image",
           use_filename: true,
           unique_filename: false,
         });
         archivoUrl = result.secure_url;
-        console.log("✅ Imagen subida:", archivoUrl);
       } else {
-        // Subida a Google Drive
         const uploadedFile = await uploadFileToDrive(filePath, fileName, mimeType);
         archivoUrl = uploadedFile.webViewLink;
-        console.log("✅ Archivo subido a Drive:", archivoUrl);
       }
 
       fs.unlinkSync(filePath);
@@ -79,17 +74,15 @@ router.post("/upload", verifyToken, upload.array("archivo"), async (req, res) =>
       });
 
       const guardado = await nuevoRecurso.save();
-      urls.push(guardado);
+      recursosGuardados.push(guardado);
     }
 
-    return res.status(201).json({ success: true, recursos: urls });
+    return res.status(201).json({ success: true, recursos: recursosGuardados });
   } catch (err) {
     console.error("❌ ERROR AL SUBIR RECURSO:", err);
     res.status(500).json({ success: false, message: "Error al subir recurso" });
   }
 });
-
-
 
 // 🗑️ Eliminar recurso
 router.delete("/:id", verifyToken, async (req, res) => {
@@ -99,7 +92,6 @@ router.delete("/:id", verifyToken, async (req, res) => {
       return res.status(404).json({ success: false, message: "Recurso no encontrado" });
     }
 
-    // Permitir que el dueño o el admin eliminen
     if (recurso.uploadedBy.toString() !== req.user.id && req.user.rol !== "admin") {
       return res.status(403).json({ success: false, message: "No autorizado para eliminar este recurso" });
     }
@@ -112,7 +104,6 @@ router.delete("/:id", verifyToken, async (req, res) => {
     res.status(500).json({ success: false, message: "Error al eliminar recurso" });
   }
 });
-
 
 // 📤 Obtener recursos por edad
 router.get("/por-edad/:edad", async (req, res) => {
