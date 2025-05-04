@@ -23,7 +23,7 @@ router.get("/", async (req, res) => {
 });
 
 // 📥 Subir recurso
-router.post("/upload", verifyToken, upload.single("archivo"), async (req, res) => {
+router.post("/upload", verifyToken, upload.array("archivo"), async (req, res) => {
   try {
     console.log("🟡 Body recibido:", req.body);
     console.log("📎 Archivo recibido:", req.file);
@@ -31,43 +31,60 @@ router.post("/upload", verifyToken, upload.single("archivo"), async (req, res) =
     let archivoUrl = null;
     let tipoArchivo = req.body.tipoArchivo || "otro"; // Usa el tipo elegido en el formulario, o default
 
-    if (req.file) {
-      const extension = path.extname(req.file.originalname).toLowerCase();
-      const mimeType = req.file.mimetype;
-      const filePath = req.file.path;
-      const fileName = req.file.originalname;
-
-      const isImage = [".jpg", ".jpeg", ".png", ".gif", ".webp"].includes(extension);
-
-      // Si no viene tipoArchivo explícito, lo detectamos automáticamente
-      if (!req.body.tipoArchivo) {
-        if (isImage) tipoArchivo = "imagen";
-        else if (extension === ".pdf") tipoArchivo = "pdf";
-        else if ([".doc", ".docx"].includes(extension)) tipoArchivo = "documento";
-      }
-
-      const folderPath = `recursos/${req.body.edad || "general"}/${req.body.categoria || "otros"}`;
-
-      if (tipoArchivo === "imagen") {
-        // 📷 Subir imagen a Cloudinary
-        const result = await cloudinary.uploader.upload(filePath, {
-          folder: folderPath,
-          resource_type: "image",
-          use_filename: true,
-          unique_filename: false,
+    if (req.files && req.files.length > 0) {
+      const urls = [];
+    
+      for (const file of req.files) {
+        const extension = path.extname(file.originalname).toLowerCase();
+        const mimeType = file.mimetype;
+        const filePath = file.path;
+        const fileName = file.originalname;
+    
+        const isImage = [".jpg", ".jpeg", ".png", ".gif", ".webp"].includes(extension);
+        let tipoArchivo = req.body.tipoArchivo || "otro";
+    
+        if (!req.body.tipoArchivo) {
+          if (isImage) tipoArchivo = "imagen";
+          else if (extension === ".pdf") tipoArchivo = "pdf";
+          else if ([".doc", ".docx"].includes(extension)) tipoArchivo = "documento";
+        }
+    
+        const folderPath = `recursos/${req.body.edad || "general"}/${req.body.categoria || "otros"}`;
+    
+        let archivoUrl;
+        if (tipoArchivo === "imagen") {
+          const result = await cloudinary.uploader.upload(filePath, {
+            folder: folderPath,
+            resource_type: "image",
+            use_filename: true,
+            unique_filename: false,
+          });
+          archivoUrl = result.secure_url;
+        } else {
+          const uploadedFile = await uploadFileToDrive(filePath, fileName, mimeType);
+          archivoUrl = uploadedFile.webViewLink;
+        }
+    
+        fs.unlinkSync(filePath);
+    
+        // Guardar uno por uno
+        const nuevoRecurso = new Recurso({
+          url: archivoUrl,
+          edad: req.body.edad,
+          categoria: req.body.categoria,
+          nombre: file.originalname,
+          objetivo: req.body.objetivo || "",
+          uploadedBy: req.user.id,
+          tipoArchivo,
         });
-        archivoUrl = result.secure_url;
-        console.log("✅ Imagen subida a Cloudinary:", archivoUrl);
-      } else {
-        // 📄 Subir otro tipo de archivo a Google Drive
-        const uploadedFile = await uploadFileToDrive(filePath, fileName, mimeType);
-        archivoUrl = uploadedFile.webViewLink;
-        console.log("✅ Archivo subido a Google Drive:", archivoUrl);
+    
+        const guardado = await nuevoRecurso.save();
+        urls.push(guardado);
       }
-
-      // 🧹 Borrar archivo temporal
-      fs.unlinkSync(filePath);
+    
+      return res.status(201).json({ success: true, recursos: urls });
     }
+    
 
     const nuevoRecurso = new Recurso({
       url: archivoUrl,
