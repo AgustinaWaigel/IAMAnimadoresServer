@@ -23,6 +23,7 @@ router.get("/", async (req, res) => {
 });
 
 // 📥 Subir recurso
+// 📥 Subir recurso
 router.post("/upload", verifyToken, upload.array("archivo"), async (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
@@ -50,16 +51,20 @@ router.post("/upload", verifyToken, upload.array("archivo"), async (req, res) =>
 
       let archivoUrl;
       if (tipoArchivo === "imagen") {
+        // ✅ Subida a Cloudinary con auto-detección
         const result = await cloudinary.uploader.upload(filePath, {
           folder: folderPath,
-          resource_type: "image",
+          resource_type: "auto", // <- lo importante
           use_filename: true,
           unique_filename: false,
         });
         archivoUrl = result.secure_url;
+        console.log("✅ Imagen subida:", archivoUrl);
       } else {
+        // Subida a Google Drive
         const uploadedFile = await uploadFileToDrive(filePath, fileName, mimeType);
         archivoUrl = uploadedFile.webViewLink;
+        console.log("✅ Archivo subido a Drive:", archivoUrl);
       }
 
       fs.unlinkSync(filePath);
@@ -84,6 +89,7 @@ router.post("/upload", verifyToken, upload.array("archivo"), async (req, res) =>
     res.status(500).json({ success: false, message: "Error al subir recurso" });
   }
 });
+
 
 
 // 🗑️ Eliminar recurso
