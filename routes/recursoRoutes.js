@@ -23,7 +23,6 @@ router.get("/", async (req, res) => {
 });
 
 // 📥 Subir recurso
-// 📥 Subir recurso
 router.post("/upload", verifyToken, upload.array("archivo"), async (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
