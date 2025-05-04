@@ -2,11 +2,11 @@ const express = require("express");
 const router = express.Router();
 const fs = require("fs");
 const path = require("path");
+const { v4: uuidv4 } = require("uuid");
 
 const Recurso = require("../models/Recurso");
 const verifyToken = require("../middleware/auth");
-const upload = require("../middleware/multer"); // ← tu multer configurado
-// const { cloudinary } = require("../utils/cloudinaryStorage");
+const upload = require("../middleware/multer");
 const { uploadFileToDrive } = require("../utils/googleDrive");
 
 // 📤 Obtener recursos
@@ -21,13 +21,14 @@ router.get("/", async (req, res) => {
   }
 });
 
-// 📥 Subir recursos (varios)
+// 📅 Subir recursos con grupoId
 router.post("/upload", verifyToken, upload.array("archivo"), async (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ success: false, message: "No se recibieron archivos" });
     }
 
+    const grupoId = uuidv4(); // ✨ ID para este conjunto de archivos
     const recursosGuardados = [];
 
     for (const file of req.files) {
@@ -46,11 +47,8 @@ router.post("/upload", verifyToken, upload.array("archivo"), async (req, res) =>
       }
 
       const folderPath = `recursos/${req.body.edad || "general"}/${req.body.categoria || "otros"}`;
-
-      let archivoUrl;
       const uploadedFile = await uploadFileToDrive(filePath, fileName, mimeType);
-archivoUrl = uploadedFile.webViewLink;
-
+      const archivoUrl = uploadedFile.webViewLink;
 
       fs.unlinkSync(filePath);
 
@@ -62,6 +60,7 @@ archivoUrl = uploadedFile.webViewLink;
         objetivo: req.body.objetivo || "",
         uploadedBy: req.user.id,
         tipoArchivo,
+        grupoId,
       });
 
       const guardado = await nuevoRecurso.save();
@@ -96,7 +95,7 @@ router.delete("/:id", verifyToken, async (req, res) => {
   }
 });
 
-// 📤 Obtener recursos por edad
+// 📅 Obtener recursos por edad
 router.get("/por-edad/:edad", async (req, res) => {
   try {
     const recursos = await Recurso.find({ edad: req.params.edad });
