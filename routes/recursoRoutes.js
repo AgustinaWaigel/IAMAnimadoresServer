@@ -38,7 +38,7 @@ router.post("/upload", verifyToken, upload.array("archivo"), async (req, res) =>
         const extension = path.extname(file.originalname).toLowerCase();
         const mimeType = file.mimetype;
         const filePath = file.path;
-        const fileName = file.originalname;
+        const fileName = Buffer.from(file.originalname, "latin1").toString("utf8");
     
         const isImage = [".jpg", ".jpeg", ".png", ".gif", ".webp"].includes(extension);
         let tipoArchivo = req.body.tipoArchivo || "otro";
@@ -72,7 +72,7 @@ router.post("/upload", verifyToken, upload.array("archivo"), async (req, res) =>
           url: archivoUrl,
           edad: req.body.edad,
           categoria: req.body.categoria,
-          nombre: file.originalname,
+          nombre: fileName,
           objetivo: req.body.objetivo || "",
           uploadedBy: req.user.id,
           tipoArchivo,
@@ -90,7 +90,7 @@ router.post("/upload", verifyToken, upload.array("archivo"), async (req, res) =>
       url: archivoUrl,
       edad: req.body.edad,
       categoria: req.body.categoria,
-      nombre: req.file.originalname,
+      nombre: fileName,
       objetivo: req.body.objetivo || "",
       uploadedBy: req.user.id,
       tipoArchivo,
