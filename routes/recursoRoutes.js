@@ -6,7 +6,7 @@ const path = require("path");
 const Recurso = require("../models/Recurso");
 const verifyToken = require("../middleware/auth");
 const upload = require("../middleware/multer"); // ← tu multer configurado
-const { cloudinary } = require("../utils/cloudinaryStorage");
+// const { cloudinary } = require("../utils/cloudinaryStorage");
 const { uploadFileToDrive } = require("../utils/googleDrive");
 
 // 📤 Obtener recursos
@@ -48,18 +48,9 @@ router.post("/upload", verifyToken, upload.array("archivo"), async (req, res) =>
       const folderPath = `recursos/${req.body.edad || "general"}/${req.body.categoria || "otros"}`;
 
       let archivoUrl;
-      if (tipoArchivo === "imagen") {
-        const result = await cloudinary.uploader.upload(filePath, {
-          folder: folderPath,
-          resource_type: "image",
-          use_filename: true,
-          unique_filename: false,
-        });
-        archivoUrl = result.secure_url;
-      } else {
-        const uploadedFile = await uploadFileToDrive(filePath, fileName, mimeType);
-        archivoUrl = uploadedFile.webViewLink;
-      }
+      const uploadedFile = await uploadFileToDrive(filePath, fileName, mimeType);
+archivoUrl = uploadedFile.webViewLink;
+
 
       fs.unlinkSync(filePath);
 

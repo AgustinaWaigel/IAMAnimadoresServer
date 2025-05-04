@@ -170,13 +170,17 @@ router.post("/reset-password/:token", async (req, res) => {
 
 // PERFIL ACTUAL
 router.get("/me", verifyToken, async (req, res) => {
+  console.time("GET /me");
   try {
     const user = await User.findById(req.user.id).select("-password");
+    console.timeEnd("GET /me");
     res.json({ success: true, user });
   } catch (err) {
+    console.error("❌ Error en /me:", err);
     res.status(500).json({ success: false, message: "Error al obtener usuario" });
   }
 });
+
 
 
 router.put("/avatar", verifyToken, async (req, res) => {
