@@ -32,14 +32,14 @@ const sendPush = async (token, title, body, data = {}) => {
     notification: {
       title,
       body,
-      imageUrl: "https://tuweb.com/logo.png", // opcional
     },
     token,
     data: {
-      link: "https://localhost:5173/recursos", // valor por defecto
-      ...data, // permite sobreescribir o agregar más
+      link: "https://tu-app.vercel.app/", // opcional
+      ...data,
     },
   };
+
 
   try {
     const response = await admin.messaging().send(message);
