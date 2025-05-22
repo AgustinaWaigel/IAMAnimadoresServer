@@ -3,6 +3,8 @@ const express = require("express");
 const router = express.Router();
 const verifyToken = require("../middleware/auth");
 const User = require("../models/User");
+const sendPush = require("../utils/sendPush");
+
 
 router.post("/token", verifyToken, async (req, res) => {
   const { token } = req.body;
