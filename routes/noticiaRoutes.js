@@ -9,6 +9,7 @@ const fs = require("fs");
 const Noticia = require("../models/Noticias"); // 👈 esta línea importa el modelo
 const path = require("path");
 const { uploadFileToDrive } = require("../utils/googleDrive");
+const enviarWhatsApp = require("../utils/enviarWhatsApp");
 
 
 // 📥 Crear comunicado (solo admin)
@@ -48,12 +49,12 @@ router.post("/", verifyToken, isAdmin, upload.single("archivo"), async (req, res
           tipoArchivo = isImage
             ? "imagen"
             : isPdf
-            ? "pdf"
-            : isWord
-            ? "documento"
-            : "otro";
+              ? "pdf"
+              : isWord
+                ? "documento"
+                : "otro";
         }
-        
+
       }
 
       fs.unlinkSync(filePath); // 🔥 borrar temporal
@@ -69,6 +70,20 @@ router.post("/", verifyToken, isAdmin, upload.single("archivo"), async (req, res
     });
 
     await noticia.save();
+
+    // 🟢 Enviar WhatsApp a Agus cuando se publique una noticia
+    try {
+      const fecha = new Date().toLocaleDateString("es-AR");
+      await enviarWhatsApp(
+        "5493434151409", // tu número en formato internacional
+        "noticia_publicada", // nombre de la plantilla creada en Meta
+        [titulo, fecha, "https://iam-animadores-client.vercel.app/mostrar-noticias"]
+      );
+      console.log("✅ WhatsApp de noticia enviado");
+    } catch (err) {
+      console.error("❌ Error al enviar WhatsApp de noticia:", err.message);
+    }
+
 
     res.json({ success: true, noticia });
 
@@ -156,8 +171,8 @@ router.put("/:id", verifyToken, isAdmin, upload.single("archivo"), async (req, r
         noticia.tipoArchivo = isPdf
           ? "pdf"
           : isWord
-          ? "documento"
-          : "otro";
+            ? "documento"
+            : "otro";
       }
 
       noticia.archivoUrl = nuevoArchivoUrl;
