@@ -13,16 +13,14 @@ const userSchema = new mongoose.Schema(
     resetTokenExpires: { type: Date },
     avatarUrl: { type: String },
     avatarDesc: { type: String },
+    emailVerified: { type: Boolean, default: false },
+    emailVerificationToken: { type: String },
 
-    emailVerified: {
-      type: Boolean,
-      default: false,
-    },
-    emailVerificationToken: {
-      type: String,
-    },
+    // 🔔 Token FCM para notificaciones push
+    fcmToken: { type: String },
   },
   { timestamps: true }
 );
+
 
 module.exports = mongoose.model("User", userSchema);

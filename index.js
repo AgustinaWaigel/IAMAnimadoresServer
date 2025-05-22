@@ -50,11 +50,16 @@ const recursoRoutes = require("./routes/recursoRoutes");
 const eventoRoutes = require("./routes/eventoRoutes");
 const comunicacionRoutes = require("./routes/comunicacionRoutes");
 const muroRoutes = require("./routes/muroRoutes");
+const notificacionRoutes = require("./routes/notificacionesEventos");
+
 const fs = require("fs");
 const uploadsPath = path.join(__dirname, "uploads");
 if (!fs.existsSync(uploadsPath)) {
   fs.mkdirSync(uploadsPath);
 }
+const crearNoticiaRoute = require("./routes/crearNoticiaRoute");
+app.use("/api/crear-noticia", crearNoticiaRoute);
+
 
 // Usar rutas
 app.use("/api/auth", authRoutes);
@@ -65,6 +70,7 @@ app.use("/api/eventos", eventoRoutes);
 app.use("/api/noticias", noticiaRoutes);
 app.use("/api/comunicacion", comunicacionRoutes);
 app.use("/api/muro", muroRoutes);
+app.use("/api/notificaciones", notificacionRoutes);
 
 
 // Ruta raíz
