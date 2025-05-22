@@ -6,6 +6,12 @@ let firebaseConfig;
 if (process.env.FIREBASE_CONFIG_JSON) {
   // 🌐 Producción (Render)
   firebaseConfig = JSON.parse(process.env.FIREBASE_CONFIG_JSON);
+
+  // 🔧 Corrige el formato del private_key
+  if (firebaseConfig.private_key) {
+    firebaseConfig.private_key = firebaseConfig.private_key.replace(/\\n/g, '\n');
+  }
+
   console.log("✅ Usando configuración desde FIREBASE_CONFIG_JSON");
 } else {
   // 🧪 Local
