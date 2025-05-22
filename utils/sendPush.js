@@ -29,16 +29,15 @@ if (!admin.apps.length) {
 // Función para enviar notificación
 const sendPush = async (token, title, body, data = {}) => {
   const message = {
-    notification: {
-      title,
-      body,
-    },
-    token,
-    data: {
-      link: "https://tu-app.vercel.app/", // opcional
-      ...data,
-    },
-  };
+  notification: {
+    title: "📢 Nuevo evento misionero",
+    body: "Te esperamos este sábado a las 16 hs en la parroquia.",
+  },
+  token,
+  data: {
+    link: "https://iam-animadores-client.vercel.app/",
+  },
+};
 
 
   try {
