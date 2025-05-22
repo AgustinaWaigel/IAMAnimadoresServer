@@ -1,25 +1,26 @@
-require("dotenv").config();
+const sendPush = require("./utils/sendPush"); // o la ruta donde tengas tu función
 const mongoose = require("mongoose");
-const User = require("./models/User");
-const sendPush = require("./utils/sendPush");
+require("dotenv").config();
+const User = require("./models/User"); // asegurate de tener este modelo
 
-(async () => {
-  await mongoose.connect(process.env.MONGO_URI);
-  const user = await User.findOne({ fcmToken: { $exists: true, $ne: null } });
+mongoose.connect(process.env.MONGO_URI).then(async () => {
+  console.log("✅ Conectado a MongoDB");
 
-  if (!user) {
-    console.log("❌ No hay usuarios con token FCM");
-    return;
+  const user = await User.findOne({ username: "soledad.waigel" }); // cambialo por tu user
+
+  if (!user || !user.fcmToken) {
+    console.error("❌ Usuario o token FCM no encontrado");
+    process.exit();
   }
 
-  console.log("🔔 Enviando notificación a:", user.username || user.email);
-await sendPush(
-  user.fcmToken,
-  "📚 Nuevo recurso disponible",
-  "Entrá a ver el material para el próximo encuentro",
-  { link: "https://localhost:5173/recursos" }
-);
-
+  await sendPush(
+    user.fcmToken,
+    "🔔 ¡Notificación de prueba!",
+    "Esto es un mensaje de test desde tu backend.",
+    {
+      link: "https://iam-animadores-client.vercel.app/",
+    }
+  );
 
   process.exit();
-})();
+});
