@@ -36,6 +36,7 @@ const sendPush = async (token, title, body, data = {}) => {
   token,
   data: {
     link: "https://iam-animadores-client.vercel.app/",
+    ...data,
   },
 };
 
