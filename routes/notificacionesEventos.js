@@ -14,4 +14,25 @@ router.post("/token", verifyToken, async (req, res) => {
   }
 });
 
+router.post("/probar", verifyToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user?.fcmToken) {
+      return res.status(400).json({ success: false, message: "Token FCM no encontrado" });
+    }
+
+    await sendPush(
+      user.fcmToken,
+      "🔔 Notificación de prueba",
+      "Si ves esto, ¡tu sistema funciona!",
+      { link: "https://iam-animadores-client.vercel.app/" }
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("❌ Error enviando notificación:", err);
+    res.status(500).json({ success: false });
+  }
+});
+
 module.exports = router;
