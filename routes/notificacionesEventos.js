@@ -25,17 +25,14 @@ router.post("/probar", verifyToken, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
     if (!user?.fcmTokens?.length) {
-      return res.status(400).json({ success: false, message: "Sin tokens registrados" });
+      return res.status(400).json({ success: false, message: "Token FCM no encontrado" });
     }
 
+
     for (const token of user.fcmTokens) {
-      await sendPush(
-        token,
-        "🔔 Notificación de prueba",
-        "Si ves esto, ¡te funciona en este dispositivo!",
-        { link: "https://iam-animadores-client.vercel.app/" }
-      );
+      await sendPush(token, "🔔 Notificación de prueba", "¡Desde todos tus dispositivos!");
     }
+
 
     res.json({ success: true });
   } catch (err) {
