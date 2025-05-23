@@ -4,6 +4,7 @@ const router = express.Router();
 const verifyToken = require("../middleware/auth");
 const User = require("../models/User");
 const sendPush = require("../utils/sendPush");
+const authMiddleware = require("../middlewares/authMiddleware");
 
 
 router.post("/token", verifyToken, async (req, res) => {
