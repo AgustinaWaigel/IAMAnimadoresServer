@@ -17,7 +17,10 @@ const userSchema = new mongoose.Schema(
     emailVerificationToken: { type: String },
 
     // 🔔 Token FCM para notificaciones push
-    fcmToken: { type: String },
+    fcmTokens: {
+  type: [String],
+  default: [],
+},
   },
   { timestamps: true }
 );
