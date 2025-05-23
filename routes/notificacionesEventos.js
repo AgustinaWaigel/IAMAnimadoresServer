@@ -4,7 +4,7 @@ const router = express.Router();
 const verifyToken = require("../middleware/auth");
 const User = require("../models/User");
 const sendPush = require("../utils/sendPush");
-const authMiddleware = require("../middlewares/authMiddleware");
+
 
 
 router.post("/token", verifyToken, async (req, res) => {
@@ -43,7 +43,8 @@ router.post("/probar", async (req, res) => {
   }
 });
 
-router.post("/guardar-token", authMiddleware, async (req, res) => {
+router.post("/guardar-token", verifyToken, async (req, res) => {
+
   try {
     const { fcmToken } = req.body;
     const userId = req.user.id;
