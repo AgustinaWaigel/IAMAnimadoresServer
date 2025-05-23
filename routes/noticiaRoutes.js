@@ -9,7 +9,7 @@ const fs = require("fs");
 const Noticia = require("../models/Noticias"); // 👈 esta línea importa el modelo
 const path = require("path");
 const { uploadFileToDrive } = require("../utils/googleDrive");
-const enviarWhatsApp = require("../utils/enviarWhatsApp");
+const enviarWhatsApp = require("../utils/enviarWhatsapp");
 
 
 // 📥 Crear comunicado (solo admin)

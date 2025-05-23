@@ -1,5 +1,5 @@
 require("dotenv").config();
-const enviarWhatsApp = require("./utils/enviarWhatsApp");
+const enviarWhatsApp = require("./utils/enviarWhatsapp");
 
 (async () => {
   try {
