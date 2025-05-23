@@ -22,26 +22,33 @@ router.post("/token", verifyToken, async (req, res) => {
 });
 
 
-router.post("/probar", async (req, res) => {
+router.post("/probar", verifyToken, async (req, res) => {
   try {
-    const user = await User.findOne({ username: "soledad.waigel" });
-    if (!user || !user.fcmToken) {
-      return res.status(400).json({ error: "Usuario o token no encontrado" });
+    const user = await User.findById(req.user.id);
+
+    if (!user || !user.fcmTokens || user.fcmTokens.length === 0) {
+      return res.status(400).json({ error: "Usuario sin tokens FCM registrados" });
     }
 
-    await sendPush(
-      user.fcmToken,
-      "🔔 Notificación desde la app",
-      "Esto es una prueba enviada desde la app",
-      { link: "https://iam-animadores-client.vercel.app/" }
+    await Promise.all(
+      user.fcmTokens.map(token =>
+        sendPush(
+          token,
+          "🔔 Notificación desde la app",
+          "Esto es una prueba enviada desde la app",
+          { link: "https://iam-animadores-client.vercel.app/" }
+        )
+      )
     );
 
     res.json({ ok: true });
   } catch (err) {
-    console.error("❌ Error al enviar push:", err);
+    console.error("❌ Error al enviar notificación:", err);
     res.status(500).json({ error: "Error interno", detalle: err.message });
   }
 });
+
+
 
 router.post("/guardar-token", verifyToken, async (req, res) => {
 
