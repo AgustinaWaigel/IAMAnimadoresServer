@@ -4,11 +4,17 @@ const mongoose = require('mongoose');
 const noticiaSchema = new mongoose.Schema({
   titulo: String,
   portadaUrl: String,
-  contenido: String,
+  contenido: [
+    {
+      tipo: String,
+      contenido: mongoose.Schema.Types.Mixed, // puede ser HTML o una URL
+    },
+  ],
   imagenes: [String],
   slug: { type: String, unique: true },
-  creadoPor: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario' },
-  fecha: { type: Date, default: Date.now }
+  creadoPor: { type: mongoose.Schema.Types.ObjectId, ref: "Usuario" },
+  fecha: { type: Date, default: Date.now },
 });
+
 
 module.exports = mongoose.model('NoticiaPrueba', noticiaSchema);
