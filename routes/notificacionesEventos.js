@@ -42,6 +42,21 @@ router.post("/probar", async (req, res) => {
   }
 });
 
+router.post("/guardar-token", authMiddleware, async (req, res) => {
+  try {
+    const { fcmToken } = req.body;
+    const userId = req.user.id;
+
+    const user = await User.findByIdAndUpdate(userId, { fcmToken }, { new: true });
+    if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("❌ Error al guardar token FCM:", err);
+    res.status(500).json({ error: "Error interno", detalle: err.message });
+  }
+});
+
 
 
 module.exports = router;
