@@ -75,7 +75,7 @@ router.post("/", verifyToken, isAdmin, upload.single("archivo"), async (req, res
     try {
       const fecha = new Date().toLocaleDateString("es-AR");
       await enviarWhatsApp(
-        "5493434151409", // tu número en formato internacional
+        "5493435449137", // tu número en formato internacional
         "noticia_publicada", // nombre de la plantilla creada en Meta
         [titulo, fecha, "https://iam-animadores-client.vercel.app/mostrar-noticias"]
       );
