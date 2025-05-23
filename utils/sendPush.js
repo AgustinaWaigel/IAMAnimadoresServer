@@ -21,16 +21,16 @@ if (!admin.apps.length) {
 
 const sendPush = async (token, title, body, data = {}) => {
   const message = {
-    notification: {
-      title,
-      body,
-    },
-    token,
-    data: {
-      link: "https://iam-animadores-client.vercel.app/",
-      ...data,
-    },
-  };
+  token: fcmToken,
+  notification: {
+    title: "🔔 ¡Notificación de prueba!",
+    body: "Esto es un mensaje de test desde tu backend.",
+  },
+  data: {
+    link: "https://iam-animadores-client.vercel.app/",
+  }
+};
+
 
   try {
     const response = await admin.messaging().send(message);
