@@ -10,7 +10,7 @@ const enviarWhatsApp = async (to, plantilla, variables = []) => {
       {
         messaging_product: "whatsapp",
         to, // número del destinatario con código país, ej. 549341XXXXXXX
-        type: "template",
+        type: "template",//
         template: {
           name: plantilla, // ej. "recordatorio_evento"
           language: { code: "es_AR" },
