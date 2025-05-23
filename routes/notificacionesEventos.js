@@ -21,25 +21,27 @@ router.post("/token", verifyToken, async (req, res) => {
 });
 
 
-router.post("/probar", verifyToken, async (req, res) => {
+router.post("/probar", async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
-    if (!user?.fcmTokens?.length) {
-      return res.status(400).json({ success: false, message: "Token FCM no encontrado" });
+    const user = await User.findOne({ username: "soledad.waigel" });
+    if (!user || !user.fcmToken) {
+      return res.status(400).json({ error: "Usuario o token no encontrado" });
     }
 
+    await sendPush(
+      user.fcmToken,
+      "🔔 Notificación desde la app",
+      "Esto es una prueba enviada desde la app",
+      { link: "https://iam-animadores-client.vercel.app/" }
+    );
 
-    for (const token of user.fcmTokens) {
-      await sendPush(token, "🔔 Notificación de prueba", "¡Desde todos tus dispositivos!");
-    }
-
-
-    res.json({ success: true });
+    res.json({ ok: true });
   } catch (err) {
-    console.error("❌ Error enviando notificación:", err);
-    res.status(500).json({ success: false });
+    console.error("❌ Error al enviar push:", err);
+    res.status(500).json({ error: "Error interno", detalle: err.message });
   }
 });
+
 
 
 module.exports = router;
