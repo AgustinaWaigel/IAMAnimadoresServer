@@ -32,7 +32,16 @@ router.post(
       const { titulo, contenido } = req.body;
       const slug = slugify(titulo, { lower: true });
 
-      const contenidoParseado = JSON.parse(contenido); // ✅ esto convierte el string a array de bloques
+      if (!contenido) {
+        return res.status(400).json({ error: "Falta el contenido" });
+      }
+
+      let contenidoParseado = [];
+      try {
+        contenidoParseado = JSON.parse(contenido);
+      } catch (err) {
+        return res.status(400).json({ error: "Contenido inválido (no es JSON)" });
+      }
 
       const portadaFile = req.files?.portada?.[0];
       const portadaUrl = portadaFile ? await subirACloudinary(portadaFile) : null;
@@ -42,7 +51,6 @@ router.post(
         imagenesFiles.map((file) => subirACloudinary(file))
       );
 
-      // Después de subir las imágenes
       let imgIndex = 0;
       const contenidoFinal = contenidoParseado.map((bloque) => {
         if (bloque.tipo === "imagen") {
@@ -63,16 +71,14 @@ router.post(
         creadoPor: req.user?._id,
       });
 
-
       await noticia.save();
       res.status(201).json(noticia);
     } catch (err) {
-      console.error(err);
+      console.error("❌ Error al subir la noticia:", err);
       res.status(500).json({ error: "Error al subir la noticia" });
     }
   }
 );
-
 
 // GET todas las noticias de prueba
 router.get("/", async (req, res) => {
@@ -98,7 +104,6 @@ router.get("/id/:id", async (req, res) => {
     res.status(500).json({ error: "Error al obtener la noticia" });
   }
 });
-
 
 router.get("/:slug", async (req, res) => {
   try {
@@ -140,7 +145,6 @@ router.put("/:id", upload.fields([
       noticia.slug = slugify(titulo, { lower: true });
     }
 
-    // Parsear bloques
     let contenidoParseado = [];
     try {
       contenidoParseado = JSON.parse(contenido || "[]");
@@ -148,14 +152,12 @@ router.put("/:id", upload.fields([
       return res.status(400).json({ success: false, message: "Contenido inválido" });
     }
 
-    // Actualizar portada si viene una nueva
     const portadaFile = req.files?.portada?.[0];
     if (portadaFile) {
       const portadaUrl = await subirACloudinary(portadaFile);
       noticia.portadaUrl = portadaUrl;
     }
 
-    // Subir imágenes de bloques
     const imagenesFiles = req.files?.imagenes || [];
     const imagenesUrls = await Promise.all(
       imagenesFiles.map(file => subirACloudinary(file))
@@ -181,6 +183,5 @@ router.put("/:id", upload.fields([
     res.status(500).json({ success: false, message: "Error al actualizar la noticia" });
   }
 });
-
 
 module.exports = router;
