@@ -11,14 +11,30 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
 // Subida a Cloudinary
+const crypto = require("crypto");
+
 async function subirACloudinary(file) {
   const b64 = Buffer.from(file.buffer).toString("base64");
   const dataURI = `data:${file.mimetype};base64,${b64}`;
+
+  const timestamp = Math.round(Date.now() / 1000);
+  const folder = "noticias_animadores";
+
+  const signature = crypto
+    .createHash("sha1")
+    .update(`folder=${folder}&timestamp=${timestamp}${process.env.CLOUDINARY_API_SECRET}`)
+    .digest("hex");
+
   const res = await uploader.upload(dataURI, {
-    folder: "noticias_animadores",
+    folder,
+    timestamp,
+    signature,
+    api_key: process.env.CLOUDINARY_API_KEY,
   });
+
   return res.secure_url;
 }
+
 
 // POST /api/crear-noticia
 router.post(
