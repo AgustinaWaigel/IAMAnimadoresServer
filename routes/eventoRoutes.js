@@ -3,7 +3,7 @@ const router = express.Router();
 const Evento = require("../models/Evento");
 const verifyToken = require("../middleware/auth");
 const isAdmin = require("../middleware/isAdmin");
-
+const { enviarMensajeGeneral } = require("../services/telegramBot");
 // Crear evento
 router.post("/", verifyToken, isAdmin, async (req, res) => {
   try {
@@ -33,15 +33,31 @@ router.get("/", async (req, res) => {
   }
 });
 
-// Eliminar evento
-router.delete("/:id", verifyToken, isAdmin, async (req, res) => {
+router.delete("/:id", async (req, res) => {
   try {
-    await Evento.findByIdAndDelete(req.params.id);
+    const evento = await Evento.findById(req.params.id);
+    if (!evento) {
+      return res.status(404).json({ success: false, message: "Evento no encontrado" });
+    }
+
+    const fecha = new Date(evento.start);
+    const fechaStr = fecha.toLocaleDateString("es-AR");
+    const hora = fecha.toLocaleTimeString("es-AR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    const mensaje = `❌ *Evento eliminado:*\n\n📝 *${evento.title}*\n📆 Fecha: ${fechaStr}\n⏰ Hora: ${hora}\n🗒️ ${evento.descripcion || ""}`;
+    await enviarMensajeGeneral(mensaje);
+
+    await evento.deleteOne();
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Error al eliminar evento" });
+    console.error("❌ Error al eliminar evento:", err.message);
+    res.status(500).json({ success: false, message: "Error al eliminar el evento" });
   }
 });
+
 
 // Editar evento
 router.put("/:id", verifyToken, isAdmin, async (req, res) => {

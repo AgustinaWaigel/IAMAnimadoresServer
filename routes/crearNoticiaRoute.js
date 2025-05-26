@@ -3,6 +3,7 @@ const multer = require("multer");
 const slugify = require("slugify");
 const { uploader } = require("cloudinary").v2;
 const NoticiaPrueba = require("../models/pruebaNoticias");
+const { enviarNoticia } = require("../services/telegramBot"); // ajustá la ruta si está en otro lado
 
 const router = express.Router();
 
@@ -78,7 +79,6 @@ router.post(
         return bloque;
       });
 
-
       const noticia = new NoticiaPrueba({
         titulo,
         slug,
@@ -89,6 +89,12 @@ router.post(
       });
 
       await noticia.save();
+      try {
+  await enviarNoticia(titulo, slug); // el slug ya lo tenés creado arriba
+} catch (e) {
+  console.error("⚠️ No se pudo enviar la noticia por Telegram:", e.message);
+}
+
       res.status(201).json(noticia);
     } catch (err) {
       console.error("❌ Error al subir la noticia:", err);

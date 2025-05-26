@@ -1,5 +1,6 @@
 require("dotenv").config();
 require("./utils/notificarEventosAuto");
+require("./services/telegramBot"); // 🚨 Esto es lo que faltaba
 
 const express = require("express");
 const mongoose = require("mongoose");
@@ -62,7 +63,6 @@ if (!fs.existsSync(uploadsPath)) {
 const crearNoticiaRoute = require("./routes/crearNoticiaRoute");
 app.use("/api/crear-noticia", crearNoticiaRoute);
 
-
 // Usar rutas
 app.use("/api/auth", authRoutes);
 app.use("/api", userRoutes);
@@ -73,7 +73,6 @@ app.use("/api/noticias", noticiaRoutes);
 app.use("/api/comunicacion", comunicacionRoutes);
 app.use("/api/muro", muroRoutes);
 app.use("/api/notificaciones", notificacionRoutes);
-
 
 // Ruta raíz
 app.get("/", (req, res) => {
@@ -92,3 +91,6 @@ mongoose
   .catch((err) => {
     console.error("❌ Error de conexión a MongoDB:", err);
   });
+
+
+
