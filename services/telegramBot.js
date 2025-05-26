@@ -1,106 +1,95 @@
 const TelegramBot = require("node-telegram-bot-api");
+const express = require("express");
+const bodyParser = require("body-parser");
+
 const UsuarioTelegram = require("../models/UsuarioTelegram");
 const NoticiaPrueba = require("../models/pruebaNoticias");
 const Evento = require("../models/Evento");
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
-const groupId = process.env.TELEGRAM_GROUP_ID || "-1002476216329";
+const webhookPath = `/bot${token}`;
+const webhookUrl = `${process.env.PUBLIC_URL}${webhookPath}`; // ej: https://tubot.onrender.com/botTOKEN
 
-let bot;
+const bot = new TelegramBot(token, { webHook: { port: false } }); // desactiva polling
+bot.setWebHook(webhookUrl);
 
-function initTelegramBot() {
-  if (bot) return bot; // evitar múltiples instancias
+const app = express();
+app.use(bodyParser.json());
+app.post(webhookPath, (req, res) => {
+  bot.processUpdate(req.body);
+  res.sendStatus(200);
+});
 
-  bot = new TelegramBot(token, { polling: true });
+// === Lógica del bot ===
 
-  // Enviar bienvenida al grupo
-  bot.on("new_chat_members", async (msg) => {
-    const chatId = msg.chat.id;
-    bot.sendMessage(chatId,
-      `👋 ¡Bienvenido/a! Este bot te avisará de eventos y noticias importantes.
+bot.on("new_chat_members", async (msg) => {
+  const chatId = msg.chat.id;
+  bot.sendMessage(chatId,
+    `👋 ¡Bienvenido/a! Este bot te avisará de eventos y noticias importantes.\n\n🧭 Para recibir más info, escribí: *hola*.\nEl bot te responderá con un botón para hablar en privado.\n\nDesde el chat privado, también podés escribir *hola* para ver el menú.\nEsto es lo que hay por ahora. Estamos trabajando para agregar más opciones.`,
+    { parse_mode: "Markdown" });
+});
 
-🧭 Para recibir más info, escribí: *hola*.
-El bot te responderá con un botón para hablar en privado.
+bot.on("message", async (msg) => {
+  const text = msg.text?.toLowerCase();
+  const chatId = msg.chat.id;
+  const { first_name, username } = msg.chat;
 
-Desde el chat privado, también podés escribir *hola* para ver el menú.
-Esto es lo que hay por ahora. Estamos trabajando para agregar más opciones.`,
-      { parse_mode: "Markdown" });
-  });
+  try {
+    await UsuarioTelegram.findOneAndUpdate(
+      { chatId },
+      { chatId, nombre: first_name || "", username: username || "" },
+      { upsert: true, new: true }
+    );
+  } catch (e) {
+    console.error("❌ Error al guardar usuario:", e.message);
+  }
 
-  // Guardar usuario y mostrar menú si es mensaje privado
-  bot.on("message", async (msg) => {
-    const text = msg.text?.toLowerCase();
-    const chatId = msg.chat.id;
-    const { first_name, username } = msg.chat;
+  if (msg.chat.type.includes("group") && text?.includes("hola")) {
+    return bot.sendMessage(chatId, "🔒 Tocá el botón para hablar en privado:", {
+      reply_markup: {
+        inline_keyboard: [[{ text: "Abrir chat privado", url: `https://t.me/${process.env.BOT_USERNAME}` }]]
+      }
+    });
+  }
 
-    try {
-      await UsuarioTelegram.findOneAndUpdate(
-        { chatId },
-        { chatId, nombre: first_name || "", username: username || "" },
-        { upsert: true, new: true }
-      );
-    } catch (e) {
-      console.error("❌ Error al guardar usuario:", e.message);
-    }
-
-    // En grupo: mostrar botón para ir al privado
-    if (msg.chat.type.includes("group") && text && text.includes("hola")) {
-      return bot.sendMessage(chatId, "🔒 Tocá el botón para hablar en privado:", {
+  if (msg.chat.type === "private" && text?.includes("hola")) {
+    return bot.sendMessage(chatId,
+      `🙌 ¡Hola ${first_name || ""}! Este es el menú:\n\n📌 Noticias recientes\n📅 Eventos próximos\n\n✍️ Escribí *menú* en cualquier momento para verlo de nuevo.\n\nEsto es lo que hay por ahora. Estamos trabajando para agregar más opciones.`,
+      {
+        parse_mode: "Markdown",
         reply_markup: {
-          inline_keyboard: [[{ text: "Abrir chat privado", url: `https://t.me/${process.env.BOT_USERNAME}` }]]
+          inline_keyboard: [
+            [{ text: "📰 Últimas noticias", callback_data: "ultimas" }],
+            [{ text: "📅 Ver eventos", callback_data: "eventos" }]
+          ]
         }
       });
-    }
+  }
+});
 
-    // En privado: mostrar menú si dice hola
-    if (msg.chat.type === "private" && text && text.includes("hola")) {
-      return bot.sendMessage(chatId,
-        `🙌 ¡Hola ${first_name || ""}! Este es el menú:
+bot.on("callback_query", async (query) => {
+  const { chat } = query.message;
+  const data = query.data;
 
-📌 Noticias recientes
-📅 Eventos próximos
+  if (data === "ultimas") {
+    const noticias = await NoticiaPrueba.find().sort({ createdAt: -1 }).limit(3);
+    const respuesta = noticias.map(n => `🗞 *${n.titulo}*\nhttps://iam-animadores-client.vercel.app/noticias/${n.slug}`).join("\n\n");
+    bot.sendMessage(chat.id, respuesta, { parse_mode: "Markdown" });
+  }
 
-✍️ Escribí *menú* en cualquier momento para verlo de nuevo.
+  if (data === "eventos") {
+    const ahora = new Date();
+    const eventos = await Evento.find({ start: { $gte: ahora } }).sort({ start: 1 }).limit(3);
+    const respuesta = eventos.map(e => {
+      const fecha = new Date(e.start).toLocaleDateString("es-AR");
+      const hora = new Date(e.start).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+      return `📅 *${e.title}*\n📆 ${fecha} ⏰ ${hora}`;
+    }).join("\n\n");
+    bot.sendMessage(chat.id, respuesta, { parse_mode: "Markdown" });
+  }
 
-Esto es lo que hay por ahora. Estamos trabajando para agregar más opciones.`,
-        {
-          parse_mode: "Markdown",
-          reply_markup: {
-            inline_keyboard: [
-              [{ text: "📰 Últimas noticias", callback_data: "ultimas" }],
-              [{ text: "📅 Ver eventos", callback_data: "eventos" }]
-            ]
-          }
-        });
-    }
-  });
+  bot.answerCallbackQuery(query.id);
+});
 
-  // Comandos de botones
-  bot.on("callback_query", async (query) => {
-    const { chat } = query.message;
-    const data = query.data;
-
-    if (data === "ultimas") {
-      const noticias = await NoticiaPrueba.find().sort({ createdAt: -1 }).limit(3);
-      const respuesta = noticias.map(n => `🗞 *${n.titulo}*\nhttps://iam-animadores-client.vercel.app/noticias/${n.slug}`).join("\n\n");
-      bot.sendMessage(chat.id, respuesta, { parse_mode: "Markdown" });
-    }
-
-    if (data === "eventos") {
-      const ahora = new Date();
-      const eventos = await Evento.find({ start: { $gte: ahora } }).sort({ start: 1 }).limit(3);
-      const respuesta = eventos.map(e => {
-        const fecha = new Date(e.start).toLocaleDateString("es-AR");
-        const hora = new Date(e.start).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
-        return `📅 *${e.title}*\n📆 ${fecha} ⏰ ${hora}`;
-      }).join("\n\n");
-      bot.sendMessage(chat.id, respuesta, { parse_mode: "Markdown" });
-    }
-
-    bot.answerCallbackQuery(query.id);
-  });
-
-  return bot;
-}
-
-module.exports = initTelegramBot();
+// Exportá `app` para que Render la use
+module.exports = app;
