@@ -14,7 +14,10 @@ const allowedOrigins = [
 ];
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const port = process.env.PORT || 3001;
+app.listen(port, () => {
+  console.log(`✅ Servidor backend y Telegram bot activos en http://localhost:${port}`);
+});
 
 // Middleware CORS
 app.use(
