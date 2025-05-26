@@ -1,6 +1,6 @@
 require("dotenv").config();
 require("./utils/notificarEventosAuto");
-require("./services/telegramBot"); // 🚨 Esto es lo que faltaba
+const app = require("./services/telegramBot");
 
 const express = require("express");
 const mongoose = require("mongoose");
