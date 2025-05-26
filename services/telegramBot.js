@@ -1,32 +1,20 @@
 const TelegramBot = require("node-telegram-bot-api");
-const express = require("express");
-const bodyParser = require("body-parser");
-
 const UsuarioTelegram = require("../models/UsuarioTelegram");
 const NoticiaPrueba = require("../models/pruebaNoticias");
 const Evento = require("../models/Evento");
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const webhookPath = `/bot${token}`;
-const webhookUrl = `${process.env.PUBLIC_URL}${webhookPath}`; // ej: https://tubot.onrender.com/botTOKEN
+const webhookUrl = `${process.env.PUBLIC_URL}${webhookPath}`; // debe estar en tu .env
 
-const bot = new TelegramBot(token, { webHook: { port: false } }); // desactiva polling
+const bot = new TelegramBot(token);
+
 bot.setWebHook(webhookUrl);
 
-const app = express();
-app.use(bodyParser.json());
-app.post(webhookPath, (req, res) => {
-  bot.processUpdate(req.body);
-  res.sendStatus(200);
-});
-
-// === Lógica del bot ===
-
+// === Handlers del bot ===
 bot.on("new_chat_members", async (msg) => {
   const chatId = msg.chat.id;
-  bot.sendMessage(chatId,
-    `👋 ¡Bienvenido/a! Este bot te avisará de eventos y noticias importantes.\n\n🧭 Para recibir más info, escribí: *hola*.\nEl bot te responderá con un botón para hablar en privado.\n\nDesde el chat privado, también podés escribir *hola* para ver el menú.\nEsto es lo que hay por ahora. Estamos trabajando para agregar más opciones.`,
-    { parse_mode: "Markdown" });
+  bot.sendMessage(chatId, `👋 ¡Bienvenido/a! Este bot te avisará de eventos y noticias importantes.\n\n🧭 Para recibir más info, escribí: *hola*.\nEl bot te responderá con un botón para hablar en privado.\n\nDesde el chat privado, también podés escribir *hola* para ver el menú.\nEsto es lo que hay por ahora. Estamos trabajando para agregar más opciones.`, { parse_mode: "Markdown" });
 });
 
 bot.on("message", async (msg) => {
@@ -91,5 +79,12 @@ bot.on("callback_query", async (query) => {
   bot.answerCallbackQuery(query.id);
 });
 
-// Exportá `app` para que Render la use
-module.exports = app;
+// Exporta función para conectar al app
+function configurarBotEnApp(app) {
+  app.post(webhookPath, (req, res) => {
+    bot.processUpdate(req.body);
+    res.sendStatus(200);
+  });
+}
+
+module.exports = { configurarBotEnApp };

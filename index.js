@@ -1,6 +1,6 @@
 require("dotenv").config();
 require("./utils/notificarEventosAuto");
-const app = require("./services/telegramBot");
+const { configurarBotEnApp } = require("./services/telegramBot");
 
 const express = require("express");
 const mongoose = require("mongoose");
@@ -14,10 +14,8 @@ const allowedOrigins = [
 ];
 
 const app = express();
-const port = process.env.PORT || 3001;
-app.listen(port, () => {
-  console.log(`✅ Servidor backend y Telegram bot activos en http://localhost:${port}`);
-});
+configurarBotEnApp(app); // inyecta ruta de webhook
+
 
 // Middleware CORS
 app.use(
@@ -87,9 +85,12 @@ mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
     console.log("✅ Conectado a MongoDB Atlas");
-    app.listen(PORT, () => {
-      console.log(`Servidor backend corriendo en http://localhost:${PORT}`);
-    });
+    const port = process.env.PORT || 3001;
+
+    app.listen(port, () => {
+  console.log(`Servidor backend corriendo en http://localhost:${port}`);
+});
+
   })
   .catch((err) => {
     console.error("❌ Error de conexión a MongoDB:", err);
