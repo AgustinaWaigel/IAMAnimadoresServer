@@ -72,11 +72,12 @@ router.post(
         if (bloque.tipo === "imagen") {
           const url = imagenesUrls[imgIndex];
           imgIndex++;
+          if (!url) throw new Error("Cantidad de imágenes no coincide con los bloques de imagen.");
           return { tipo: "imagen", contenido: url };
-        } else {
-          return bloque;
         }
+        return bloque;
       });
+
 
       const noticia = new NoticiaPrueba({
         titulo,
@@ -151,11 +152,11 @@ router.put("/:id", upload.fields([
 ]), async (req, res) => {
   try {
     console.log("📥 POST /crear-noticia");
-console.log("🔸 titulo:", req.body.titulo);
-console.log("🔸 contenido (raw):", req.body.contenido);
-console.log("🔸 files recibidos:", Object.keys(req.files || {}));
-console.log("🔸 portada:", req.files?.portada?.[0]?.originalname);
-console.log("🔸 imagenes:", req.files?.imagenes?.map(f => f.originalname));
+    console.log("🔸 titulo:", req.body.titulo);
+    console.log("🔸 contenido (raw):", req.body.contenido);
+    console.log("🔸 files recibidos:", Object.keys(req.files || {}));
+    console.log("🔸 portada:", req.files?.portada?.[0]?.originalname);
+    console.log("🔸 imagenes:", req.files?.imagenes?.map(f => f.originalname));
 
     const noticia = await NoticiaPrueba.findById(req.params.id);
     if (!noticia) {
