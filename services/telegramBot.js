@@ -87,4 +87,20 @@ function configurarBotEnApp(app) {
   });
 }
 
-module.exports = { configurarBotEnApp };
+function enviarMensajeGeneral(mensaje) {
+  const chatId = process.env.GRUPO_TELEGRAM_ID;
+  if (!chatId) {
+    console.warn("⚠️ No hay GRUPO_TELEGRAM_ID definido");
+    return Promise.resolve();
+  }
+
+  return bot.sendMessage(chatId, mensaje, {
+    parse_mode: "Markdown",
+  });
+}
+
+module.exports = {
+  configurarBotEnApp,
+  enviarMensajeGeneral, // ✅ esto te faltaba
+};
+
