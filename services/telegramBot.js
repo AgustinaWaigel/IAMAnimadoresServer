@@ -88,7 +88,7 @@ function configurarBotEnApp(app) {
 }
 
 function enviarMensajeGeneral(mensaje) {
-  const chatId = process.env.GRUPO_TELEGRAM_ID;
+  const chatId = process.env.TELEGRAM_GROUP_ID;
   if (!chatId) {
     console.warn("⚠️ No hay GRUPO_TELEGRAM_ID definido");
     return Promise.resolve();
