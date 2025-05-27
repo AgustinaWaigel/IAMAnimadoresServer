@@ -5,21 +5,22 @@ const verifyToken = require("../middleware/auth");
 const User = require("../models/User");
 const sendPush = require("../utils/sendPush");
 
-
-
-router.post("/token", verifyToken, async (req, res) => {
-  const { token } = req.body;
+// Mejor reemplazo para /guardar-token
+router.post("/guardar-token", verifyToken, async (req, res) => {
+  const { fcmToken } = req.body;
   try {
     const user = await User.findById(req.user.id);
-    if (!user.fcmTokens.includes(token)) {
-      user.fcmTokens.push(token);
+    if (!user.fcmTokens.includes(fcmToken)) {
+      user.fcmTokens.push(fcmToken);
       await user.save();
     }
     res.json({ success: true });
-  } catch {
-    res.status(500).json({ success: false });
+  } catch (err) {
+    console.error("❌ Error al guardar token FCM:", err);
+    res.status(500).json({ error: "Error interno", detalle: err.message });
   }
 });
+
 
 
 router.post("/probar", verifyToken, async (req, res) => {

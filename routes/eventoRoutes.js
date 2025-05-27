@@ -1,9 +1,11 @@
 const express = require("express");
 const router = express.Router();
+const mongoose = require("mongoose"); // ← ESTO FALTABA
 const Evento = require("../models/Evento");
 const verifyToken = require("../middleware/auth");
 const isAdmin = require("../middleware/isAdmin");
 const { enviarMensajeGeneral } = require("../services/telegramBot");
+
 // Crear evento
 router.post("/", verifyToken, isAdmin, async (req, res) => {
   try {
