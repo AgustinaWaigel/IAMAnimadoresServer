@@ -45,17 +45,13 @@ Evento.watch().on("change", async (change) => {
   try {
     let mensaje = "";
 
+    // ✅ IGNORAR inserts que ya se notificaron
     if (change.operationType === "insert") {
-      const doc = change.fullDocument;
-      const fecha = new Date(doc.start);
-      const hora = fecha.toLocaleTimeString("es-AR", {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-      const fechaStr = fecha.toLocaleDateString("es-AR");
+      // Este insert se puede disparar también desde un sync duplicado o seed, así que lo evitamos
+      return; // ⛔️ cortar acá evita el mensaje duplicado
+    }
 
-      mensaje = `✅ *Nuevo evento creado:*\n\n📝 *${doc.title}*\n📆 Fecha: ${fechaStr}\n⏰ Hora: ${hora}\n🗒️ ${doc.descripcion || ""}`;
-    } else if (change.operationType === "update") {
+    if (change.operationType === "update") {
       const id = change.documentKey._id;
       const evento = await Evento.findById(id);
       if (evento) {
@@ -68,9 +64,10 @@ Evento.watch().on("change", async (change) => {
 
         mensaje = `✏️ *Evento modificado:*\n\n📝 *${evento.title}*\n📆 Fecha: ${fechaStr}\n⏰ Hora: ${hora}\n🗒️ ${evento.descripcion || ""}`;
       }
-    } else if (change.operationType === "delete") {
-  // No enviar mensaje desde acá porque ya se maneja desde la ruta DELETE
-}
+    }
+
+    // Ya manejás la eliminación desde DELETE, no hace falta replicar acá
+
     if (mensaje) {
       await enviarMensajeGeneral(mensaje);
     }
@@ -78,3 +75,4 @@ Evento.watch().on("change", async (change) => {
     console.error("❌ Error en notificación de cambios de eventos:", e.message);
   }
 });
+
