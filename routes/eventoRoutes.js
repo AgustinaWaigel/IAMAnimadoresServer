@@ -12,8 +12,8 @@ router.post("/", verifyToken, isAdmin, async (req, res) => {
     const { title, start, end, descripcion, color } = req.body;
     const nuevo = new Evento({
       title,
-      start,
-      end,
+      start: new Date(`${start}:00-03:00`),  // 🕒 Corrige a hora argentina
+      end: new Date(`${end}:00-03:00`),
       descripcion,
       color,
       createdBy: req.user.id,
@@ -101,10 +101,17 @@ router.put("/:id", verifyToken, isAdmin, async (req, res) => {
   try {
     const { title, start, end, descripcion, color } = req.body;
     const eventoActualizado = await Evento.findByIdAndUpdate(
-      req.params.id,
-      { title, start, end, descripcion, color },
-      { new: true }
-    );
+  req.params.id,
+  {
+    title,
+    start: new Date(`${start}:00-03:00`),  // 🕒 También aquí
+    end: new Date(`${end}:00-03:00`),
+    descripcion,
+    color
+  },
+  { new: true }
+);
+
     res.json({ success: true, evento: eventoActualizado });
   } catch (err) {
     res.status(500).json({ success: false, message: "Error al actualizar evento" });
