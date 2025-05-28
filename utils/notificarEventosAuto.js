@@ -2,7 +2,7 @@ const Evento = require("../models/Evento");
 const { enviarMensajeGeneral } = require("../services/telegramBot");
 const cron = require("node-cron");
 
-// Ejecutar cada minuto (para pruebas)
+// ✅ Cron: notificar eventos del día siguiente a las 8 AM
 cron.schedule("0 8 * * *", async () => {
   console.log("⏰ Verificando eventos de mañana...");
 
@@ -40,18 +40,27 @@ cron.schedule("0 8 * * *", async () => {
   }
 });
 
-// 🔔 Notificar creación, edición o eliminación de eventos
+// ✅ MongoDB Change Stream: notificar solo ediciones relevantes
 Evento.watch().on("change", async (change) => {
   try {
     let mensaje = "";
 
-    // ✅ IGNORAR inserts que ya se notificaron
-    if (change.operationType === "insert") {
-      // Este insert se puede disparar también desde un sync duplicado o seed, así que lo evitamos
-      return; // ⛔️ cortar acá evita el mensaje duplicado
-    }
+    // ⛔️ Ignorar inserts: ya se notifican manualmente desde la ruta POST
+    if (change.operationType === "insert") return;
 
     if (change.operationType === "update") {
+      const updatedFields = Object.keys(change.updateDescription?.updatedFields || {});
+      const camposImportantes = ["title", "start", "end", "descripcion", "color"];
+
+      const cambioRelevante = updatedFields.some((campo) =>
+        camposImportantes.includes(campo)
+      );
+
+      if (!cambioRelevante) {
+        console.log("📭 Cambio irrelevante, no se notifica");
+        return;
+      }
+
       const id = change.documentKey._id;
       const evento = await Evento.findById(id);
       if (evento) {
@@ -66,8 +75,6 @@ Evento.watch().on("change", async (change) => {
       }
     }
 
-    // Ya manejás la eliminación desde DELETE, no hace falta replicar acá
-
     if (mensaje) {
       await enviarMensajeGeneral(mensaje);
     }
@@ -75,4 +82,3 @@ Evento.watch().on("change", async (change) => {
     console.error("❌ Error en notificación de cambios de eventos:", e.message);
   }
 });
-
