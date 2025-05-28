@@ -19,11 +19,30 @@ router.post("/", verifyToken, isAdmin, async (req, res) => {
       createdBy: req.user.id,
     });
     await nuevo.save();
+
+    // ✉️ Notificar por Telegram
+    try {
+      const fecha = new Date(nuevo.start);
+      const hora = fecha.toLocaleTimeString("es-AR", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      const fechaStr = fecha.toLocaleDateString("es-AR");
+
+      const mensaje = `✅ *Nuevo evento creado:*\n\n📝 *${title}*\n📆 Fecha: ${fechaStr}\n⏰ Hora: ${hora}\n🗒️ ${descripcion || ""}`;
+
+      await enviarMensajeGeneral(mensaje);
+    } catch (e) {
+      console.warn("⚠️ No se pudo enviar mensaje Telegram:", e.message);
+    }
+
     res.json({ success: true, evento: nuevo });
   } catch (err) {
+    console.error("❌ Error al crear evento:", err.message);
     res.status(500).json({ success: false, message: "Error al crear evento" });
   }
 });
+
 
 // Obtener eventos
 router.get("/", async (req, res) => {
