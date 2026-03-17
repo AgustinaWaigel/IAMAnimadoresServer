@@ -2,12 +2,31 @@ const express = require("express");
 const router = express.Router();
 const fs = require("fs");
 const path = require("path");
+const multer = require("multer");
 const { v4: uuidv4 } = require("uuid");
 
 const Recurso = require("../models/Recurso");
 const verifyToken = require("../middleware/auth");
 const upload = require("../middleware/multer");
 const { uploadFileToDrive } = require("../utils/googleDrive");
+
+const uploadRecursos = (req, res, next) => {
+  upload.array("archivo", 10)(req, res, (err) => {
+    if (!err) return next();
+
+    if (err instanceof multer.MulterError) {
+      if (err.code === "LIMIT_FILE_SIZE") {
+        return res.status(400).json({ success: false, message: "Cada archivo debe pesar menos de 20MB" });
+      }
+      if (err.code === "LIMIT_FILE_COUNT") {
+        return res.status(400).json({ success: false, message: "Podés subir hasta 10 archivos por vez" });
+      }
+      return res.status(400).json({ success: false, message: "Error en la subida de archivos" });
+    }
+
+    return res.status(400).json({ success: false, message: err.message || "Archivo inválido" });
+  });
+};
 
 // 📤 Obtener recursos
 router.get("/", async (req, res) => {
@@ -22,7 +41,7 @@ router.get("/", async (req, res) => {
 });
 
 // 📅 Subir recursos con grupoId
-router.post("/upload", verifyToken, upload.array("archivo"), async (req, res) => {
+router.post("/upload", verifyToken, uploadRecursos, async (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ success: false, message: "No se recibieron archivos" });
@@ -46,7 +65,6 @@ router.post("/upload", verifyToken, upload.array("archivo"), async (req, res) =>
         else if ([".doc", ".docx"].includes(extension)) tipoArchivo = "documento";
       }
 
-      const folderPath = `recursos/${req.body.edad || "general"}/${req.body.categoria || "otros"}`;
       const uploadedFile = await uploadFileToDrive(filePath, fileName, mimeType);
       const archivoUrl = uploadedFile.webViewLink;
 
