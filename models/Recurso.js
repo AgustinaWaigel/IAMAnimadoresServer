@@ -1,9 +1,22 @@
 const mongoose = require('mongoose');
 
+const EDADES_RECURSO = [
+  'jardin',
+  '1er y 2do grado',
+  '3er y 4to grado',
+  '5to y 6to grado',
+  'adolescencia',
+  'general',
+];
+
 const recursoSchema = new mongoose.Schema({
   url: String,
   nombre: String,
-  edad: String,
+  edad: {
+    type: String,
+    enum: EDADES_RECURSO,
+    default: 'general',
+  },
   categoria: String,
   objetivo: String,
   tipoArchivo: {
@@ -22,4 +35,7 @@ const recursoSchema = new mongoose.Schema({
   grupoId: String, // 👈 para agrupar recursos subidos juntos
 });
 
-module.exports = mongoose.model('Recurso', recursoSchema);
+module.exports = {
+  Recurso: mongoose.model('Recurso', recursoSchema),
+  EDADES_RECURSO,
+};

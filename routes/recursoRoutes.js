@@ -5,7 +5,7 @@ const path = require("path");
 const multer = require("multer");
 const { v4: uuidv4 } = require("uuid");
 
-const Recurso = require("../models/Recurso");
+const { Recurso, EDADES_RECURSO } = require("../models/Recurso");
 const verifyToken = require("../middleware/auth");
 const upload = require("../middleware/multer");
 const { uploadFileToDrive } = require("../utils/googleDrive");
@@ -47,6 +47,15 @@ router.post("/upload", verifyToken, uploadRecursos, async (req, res) => {
       return res.status(400).json({ success: false, message: "No se recibieron archivos" });
     }
 
+    const edad = req.body.edad || "general";
+    if (!EDADES_RECURSO.includes(edad)) {
+      return res.status(400).json({
+        success: false,
+        message: "Edad no válida",
+        edadesPermitidas: EDADES_RECURSO,
+      });
+    }
+
     const grupoId = uuidv4(); // ✨ ID para este conjunto de archivos
     const recursosGuardados = [];
 
@@ -72,7 +81,7 @@ router.post("/upload", verifyToken, uploadRecursos, async (req, res) => {
 
       const nuevoRecurso = new Recurso({
         url: archivoUrl,
-        edad: req.body.edad,
+        edad,
         categoria: req.body.categoria,
         nombre: fileName,
         objetivo: req.body.objetivo || "",
@@ -116,12 +125,24 @@ router.delete("/:id", verifyToken, async (req, res) => {
 // 📅 Obtener recursos por edad
 router.get("/por-edad/:edad", async (req, res) => {
   try {
+    if (!EDADES_RECURSO.includes(req.params.edad)) {
+      return res.status(400).json({
+        success: false,
+        message: "Edad no válida",
+        edadesPermitidas: EDADES_RECURSO,
+      });
+    }
+
     const recursos = await Recurso.find({ edad: req.params.edad });
     res.json(recursos);
   } catch (err) {
     console.error("❌ Error al obtener recursos por edad:", err);
     res.status(500).json({ success: false, message: "Error al obtener recursos por edad" });
   }
+});
+
+router.get("/edades", (req, res) => {
+  res.json({ success: true, edades: EDADES_RECURSO });
 });
 
 module.exports = router;
